@@ -18,15 +18,25 @@ pip install 'git+https://github.com/paiv/template-py'
 Usage
 --
 
-The only substitution is of `&`-variables in the form:
+```py
+import template
+template.format(text, context=None, **kwargs)
+```
+
+The only substitution is of `&` variables in the form:
 - `&name`
 - `&{name}`
 
 Basic substitution:
 ```py
-import template
 template.format('&v &{v}', v='hello')
 'hello hello'
+```
+
+If a value is not provided, the variable will not be substituted.
+```py
+template.format('&v &s, &{v} &{s}', v='hello')
+'hello &s, hello &{s}'
 ```
 
 Environment can be provided in a dictionary:
