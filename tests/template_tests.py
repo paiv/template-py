@@ -149,14 +149,14 @@ class TemplateTest (unittest.TestCase):
         '''
         b
           &a
-        ''', dict(a=('x\n' for _ in range(2))),
+        ''', dict(a=lambda:('x\n' for _ in range(2))),
         '\nb\n  x\n  x\n'
     ),
     (
         '''
         b
           &a
-        ''', dict(a=('x\n' for _ in range(0))),
+        ''', dict(a=lambda:('x\n' for _ in range(0))),
         '\nb\n'
     ),
     (
@@ -167,9 +167,17 @@ class TemplateTest (unittest.TestCase):
 
     def _driver(self, source):
         for tid, (*tpl, expect) in enumerate(source):
+            tpl, *args = tpl
+            ctx, = args if args else [None]
             with self.subTest(idx=tid):
-                s = template.format(*tpl)
-                self.assertEqual(s, expect)
+                with self.subTest(varchar=None):
+                    s = template.format(tpl, ctx)
+                    self.assertEqual(s, expect)
+
+                for c in '&#😎':
+                    with self.subTest(varchar=c):
+                        s = template.format(tpl.replace('&', c), ctx, c)
+                        self.assertEqual(s, expect.replace('&', c))
 
     def test_data(self):
         with self.subTest(source='data'):

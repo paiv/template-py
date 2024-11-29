@@ -20,7 +20,7 @@ Usage
 
 ```py
 import template
-template.format(text, context=None, **kwargs)
+template.format(text, context=None, varchar='&', /, **kwargs)
 ```
 
 The only substitution is of `&` variables in the form:
@@ -52,8 +52,18 @@ Environment values can be of the types:
 - `callable` - a function returning `str` or a `generator`
 - any other type will be converted to `str`
 
-Example:
+The leading character of variables can be changed:
 ```py
+template.format('#v #{v}', None, '#', v='hello')
+'hello hello'
+```
+
+Example
+--
+
+```py
+import template
+
 def gen():
     yield 'alice\n'
     yield 'bob\n'

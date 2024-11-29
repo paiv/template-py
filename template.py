@@ -6,20 +6,24 @@ import textwrap
 __all__ = ['format', 'print']
 
 
-def format(text, context=None, **kwargs):
+def format(text, context=None, varchar='&', /, **kwargs):
     """
     Formats text template, substituting `&`-variables:
         >>> import template
         >>> template.format('&v &{v}', v='hello')
         'hello hello'
+
+    The leading character of variables can be changed:
+        >>> template.format('#v #{v}', None, '#', v='hello')
+        'hello hello'
     """
     context = (context or dict()) | kwargs
     with io.StringIO() as so:
-        print(text, context, file=so)
+        print(text, context=context, varchar=varchar, file=so)
         return so.getvalue()
 
 
-def print(text, context=None, file=None):
+def print(text, context=None, varchar='&', file=None):
     if context is None:
         context = dict()
     if file is None:
@@ -28,7 +32,7 @@ def print(text, context=None, file=None):
         text = textwrap.dedent(text)
 
     write = file.buffer.write if hasattr(file, 'buffer') else file.write
-    parser = _Parser()
+    parser = _Parser(varchar=varchar)
 
     def _s(v): return v if isinstance(v, str) else str(v)
 
@@ -94,6 +98,12 @@ class _Token:
 
 class _Parser:
 
+    def __init__(self, varchar=None):
+        if varchar is not None:
+            if not isinstance(varchar, str) or len(varchar) != 1:
+                raise ValueError(f'invalid varchar {varchar!r}')
+        self.varchar = varchar if varchar else '&'
+
     def tokenize(self, text):
         name = None
         indent = None
@@ -115,7 +125,7 @@ class _Parser:
 
                     case 0:
                         match c:
-                            case '&':
+                            case self.varchar:
                                 name = ''
                                 state = 2
                             case _ if col == 1 and c in ' \t':
@@ -132,7 +142,7 @@ class _Parser:
                                 name += c
                                 state = 3
                             case _:
-                                yield _Token(_Token.CHR, value='&')
+                                yield _Token(_Token.CHR, value=self.varchar)
                                 consumed = False
                                 state = 0
 
@@ -141,7 +151,7 @@ class _Parser:
                             case _ if c.isalnum() or c == '_':
                                 name += c
                             case _:
-                                yield _Token(_Token.REF, name=name, value=f'&{name}')
+                                yield _Token(_Token.REF, name=name, value=self.varchar + name)
                                 name = None
                                 consumed = False
                                 state = 0
@@ -152,20 +162,20 @@ class _Parser:
                                 name += c
                                 state = 5
                             case _:
-                                yield _Token(_Token.CHR, value='&{')
+                                yield _Token(_Token.CHR, value=self.varchar + '{')
                                 consumed = False
                                 state = 0
 
                     case 5:
                         match c:
                             case '}':
-                                yield _Token(_Token.REF, name=name, value=f'&{{{name}}}')
+                                yield _Token(_Token.REF, name=name, value=self.varchar + f'{{{name}}}')
                                 name = None
                                 state = 0
                             case _ if c.isalpha() or c == '_':
                                 name += c
                             case _:
-                                yield _Token(_Token.CHR, value='&{'+name)
+                                yield _Token(_Token.CHR, value=self.varchar + '{' + name)
                                 state = 0
 
                     case 9:
@@ -182,13 +192,13 @@ class _Parser:
                 case 0:
                     pass
                 case 2:
-                    yield _Token(_Token.CHR, value='&')
+                    yield _Token(_Token.CHR, value=self.varchar)
                 case 3:
-                    yield _Token(_Token.REF, name=name, value=f'&{name}')
+                    yield _Token(_Token.REF, name=name, value=self.varchar + name)
                 case 4:
-                    yield _Token(_Token.CHR, value='&{')
+                    yield _Token(_Token.CHR, value=self.varchar + '{')
                 case 5:
-                    yield _Token(_Token.CHR, value='&{'+name)
+                    yield _Token(_Token.CHR, value=self.varchar + '{' + name)
                 case 9:
                     yield _Token(_Token.NDT, value=indent)
                 case _:
