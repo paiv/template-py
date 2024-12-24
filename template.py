@@ -31,7 +31,7 @@ def print(text, context=None, varchar='&', file=None):
     if '\n' in text:
         text = textwrap.dedent(text)
 
-    write = file.buffer.write if hasattr(file, 'buffer') else file.write
+    write = file.write
     parser = _Parser(varchar=varchar)
 
     def _s(v): return v if isinstance(v, str) else str(v)
